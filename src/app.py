@@ -10,6 +10,66 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.svm import SVC
 
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, Image
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.pagesizes import A4
+
+# CÁC HÀM CẦN THIẾT
+
+def export_pdf(results):
+    # Đăng ký font TTF hỗ trợ Unicode tiếng Việt
+    pdfmetrics.registerFont(TTFont('Times', 'times.ttf'))  # hoặc 'arial.ttf'
+
+    doc = SimpleDocTemplate("results/report.pdf", pagesize=A4)
+    styles = getSampleStyleSheet()
+    # Áp dụng font 'Times' cho tất cả các style trong stylesheets
+    for style_name in styles.byName:
+        styles[style_name].fontName = 'Times'
+
+    elements = []
+
+    #  Tiêu đề
+    elements.append(Paragraph("<b>PHÂN TÍCH & DỰ ĐOÁN DỮ LIỆU IRIS</b>", styles['Title']))
+    elements.append(Spacer(1, 12))
+
+     # Biểu đồ trực quan hóa dataset
+    scatter_desc = """
+        Để có cái nhìn trực quan về tập dữ liệu, chúng ta cần hiển thị dữ liệu. Có rất nhiều phương pháp trực quan hóa
+        dữ liệu, tuy nhiên, đối với tập Iris, tôi dùng sơ đồ phân tán để hiển thị dữ liệu
+        <br/><br/>
+        Biểu đồ phân tán (Scatter Plot) thể hiện mối quan hệ giữa các cặp đặc trưng trong tập dữ liệu <b>Iris</b>.
+        Mỗi điểm dữ liệu đại diện cho một bông hoa, được tô màu theo <b>loài (species)</b>.        
+    """
+    elements.append(Paragraph(scatter_desc, styles['Normal']))
+    elements.append(Spacer(1, 12))
+    elements.append(Image("results/chart.png", width=400, height=300))
+    elements.append(Spacer(1, 12))
+
+    # Bảng kết quả
+    desc = "Báo cáo này trình bày kết quả huấn luyện và so sánh 5 mô hình Machine Learning trên tập dữ liệu IRIS."
+    elements.append(Paragraph(desc, styles['Normal']))
+    elements.append(Spacer(1, 12))
+   
+    table_data = [["Mô hình", "Độ chính xác"]] + [[name, round(info["accuracy"], 3)] for name, info in results.items()]
+    table = Table(table_data)
+    elements.append(table)
+    elements.append(Spacer(1, 12))
+
+    # Biểu đồ
+    elements.append(Image("results/confusion_matrix.png", width=400, height=300))
+    elements.append(Spacer(1, 12))
+
+    # 5️⃣ Kết luận
+    best_model = max(results, key=lambda x: results[x]['accuracy'])
+    conclusion = f"Mô hình có hiệu suất cao nhất là: <b>{best_model}</b>."
+    elements.append(Paragraph(conclusion, styles['Normal']))
+
+    # Lưu PDF
+    doc.build(elements)
+
+# CODE CHÍNH
 st.markdown(
     """
     <h1 style='text-align: center; color: #2E86C1;'>
@@ -57,7 +117,6 @@ if x_var == "All" and y_var == "All":
         diag_kind='kde',     # biểu đồ mật độ ở đường chéo (có thể đổi 'hist')
         corner=True          # nếu True thì chỉ vẽ nửa dưới
     )
-    st.pyplot(fig)
 elif x_var == "All" and y_var != "All":
     st.subheader(f"So sánh tất cả X với '{y_var}'")
     fig, axes=plt.subplots(len_cols-1, 1, figsize=(4, 15))
@@ -66,23 +125,25 @@ elif x_var == "All" and y_var != "All":
         if col!=y_var:
             sns.scatterplot(data=train, x=col, y=y_var, hue='species', ax=axes[index_ax])
             index_ax=index_ax+1
-    st.pyplot(fig)
 
 elif y_var == "All" and x_var != "All":
     st.subheader(f"So sánh '{x_var}' với tất cả Y")
-    fig, axes = plt.subplots(1, len_cols, figsize=(15, 4))
+    fig, axes = plt.subplots(1, len_cols-1, figsize=(15, 4))
     index_ax=0
     for i, col in enumerate(features):
         if col!=x_var:
             sns.scatterplot(data=train, x=x_var, y=col, hue='species', ax=axes[index_ax])
             index_ax=index_ax+1
-    st.pyplot(fig)
 
 else:
     st.subheader(f"Biểu đồ tán xạ: {x_var} vs {y_var}")
     fig, ax = plt.subplots()
     sns.scatterplot(data=train, x=x_var, y=y_var, hue='species',  palette='Set2', ax=ax)
-    st.pyplot(fig)
+
+# === Lưu biểu đồ ra file PNG ===
+chart_path = f"results/chart.png"
+plt.savefig(chart_path, bbox_inches="tight")  # Lưu ảnh
+st.pyplot(fig)
 
 
 # Danh sách mô hình
@@ -125,4 +186,30 @@ sns.heatmap(cm, annot=True, cmap="Blues", fmt="d", ax=ax)
 ax.set_title(f"Ma trận nhầm lẫn: {mol}")
 ax.set_xlabel("Dự đoán")
 ax.set_ylabel("Thực tế")
+
+# === Lưu biểu đồ ra file PNG ===
+chart_path = "results/confusion_matrix.png"
+plt.savefig(chart_path, bbox_inches="tight")  # Lưu ảnh
+
+# Hiển thị ma trận nhằm lẫn
 st.pyplot(fig)
+
+# Tạo nút bấm xuất pdf
+btn = st.button("📄 Xuất PDF", key="export_pdf")
+st.markdown("""
+    <style>
+    .st-key-export_pdf {
+        position: fixed;
+        bottom: 25px;
+        right: 25px;
+        z-index: 999;
+        button {
+            background-color: #9ecfd4
+        }
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+if btn:
+    export_pdf(results)
+    st.success("✅ Đã tạo file PDF thành công!")
