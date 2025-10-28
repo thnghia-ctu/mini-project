@@ -6,7 +6,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 
-st.title("Phân tích dữ liệu Iris 🌸")
+st.title("Hiển thị bảng dữ liệu")
 
 # Đọc dữ liệu train và test
 train = pd.read_csv("data\iris\iris.trn", header=None)
@@ -14,27 +14,63 @@ test  = pd.read_csv("data\iris\iris.tst", header=None)
 
 # Đặt tên cột
 columns = ['sepal_length', 'sepal_width', 'petal_length', 'petal_width', 'species']
+features= ['sepal_length', 'sepal_width', 'petal_length', 'petal_width']
+label='species'
 train.columns = columns
 test.columns = columns
+
+# Chia đặc trưng và nhãn
+X_train = train[features]
+y_train = train[label]
+
+X_test = test[features]
+y_test = test[label]
 
 # Hiển thị bảng
 st.dataframe(train.head())
 
-fig =sns.pairplot(
-    train,
-    hue='species',       # tô màu theo loài hoa
-    palette='Set2',      # bảng màu
-    diag_kind='kde',     # biểu đồ mật độ ở đường chéo (có thể đổi 'hist')
-    corner=True          # nếu True thì chỉ vẽ nửa dưới
-)
-st.pyplot(fig)
+st.title("Phân tích dữ liệu Iris")
+# Chọn biến X và Y
+col1, col2 = st.columns(2)
+x_var = col1.selectbox("Chọn trục X:", ['All']+features, index=0)
+y_var = col2.selectbox("Chọn trục Y:", ['All']+features, index=0)
 
-# Chia đặc trưng và nhãn
-X_train = train[['sepal_length', 'sepal_width', 'petal_length', 'petal_width']]
-y_train = train['species']
+len_cols=len(features)
+if x_var == "All" and y_var == "All":
+    fig =sns.pairplot(
+        train,
+        hue='species',       # tô màu theo loài hoa
+        palette='Set2',      # bảng màu
+        diag_kind='kde',     # biểu đồ mật độ ở đường chéo (có thể đổi 'hist')
+        corner=True          # nếu True thì chỉ vẽ nửa dưới
+    )
+    st.pyplot(fig)
+elif x_var == "All" and y_var != "All":
+    st.subheader(f"So sánh tất cả X với '{y_var}'")
+    fig, axes=plt.subplots(len_cols-1, 1, figsize=(4, 15))
+    index_ax=0
+    for i, col in enumerate(features):
+        if col!=y_var:
+            sns.scatterplot(data=train, x=col, y=y_var, hue='species', ax=axes[index_ax])
+            index_ax=index_ax+1
+    st.pyplot(fig)
 
-X_test = test[['sepal_length', 'sepal_width', 'petal_length', 'petal_width']]
-y_test = test['species']
+elif y_var == "All" and x_var != "All":
+    st.subheader(f"So sánh '{x_var}' với tất Y")
+    fig, axes = plt.subplots(1, len_cols, figsize=(15, 4))
+    index_ax=0
+    for i, col in enumerate(features):
+        if col!=x_var:
+            sns.scatterplot(data=train, x=x_var, y=col, hue='species', ax=axes[index_ax])
+            index_ax=index_ax+1
+    st.pyplot(fig)
+
+else:
+    st.subheader(f"Biểu đồ tán xạ: {x_var} vs {y_var}")
+    fig, ax = plt.subplots()
+    sns.scatterplot(data=train, x=x_var, y=y_var, hue='species',  palette='Set2', ax=ax)
+    st.pyplot(fig)
+
 
 # Huấn luyện mô hình
 model = LogisticRegression(max_iter=200)
