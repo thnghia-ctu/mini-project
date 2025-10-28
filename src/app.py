@@ -5,6 +5,19 @@ import seaborn as sns
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.svm import SVC
+
+st.markdown(
+    """
+    <h1 style='text-align: center; color: #2E86C1;'>
+        HỆ THỐNG PHÂN TÍCH VÀ DỰ ĐOÁN TRÊN DỮ LIỆU IRIS
+    </h1>
+    """,
+    unsafe_allow_html=True
+)
 
 st.title("Hiển thị bảng dữ liệu")
 
@@ -72,20 +85,44 @@ else:
     st.pyplot(fig)
 
 
-# Huấn luyện mô hình
-model = LogisticRegression(max_iter=200)
-model.fit(X_train, y_train)
+# Danh sách mô hình
+models = {
+    "Logistic Regression": LogisticRegression(),
+    "Decision Tree": DecisionTreeClassifier(),
+    "KNN":KNeighborsClassifier(n_neighbors=3),
+    "NB":GaussianNB(),
+    "SVM":SVC()
+}
 
-# Dự đoán và đánh giá
-y_pred = model.predict(X_test)
-print("Độ chính xác:", accuracy_score(y_test, y_pred))
-print(classification_report(y_test, y_pred))
+if "results" not in st.session_state:
+    st.session_state.results = {}
+    for name, model in models.items():
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_test)
+        st.session_state.results[name] = {
+            "model": model,
+            "y_pred": y_pred,
+            "accuracy": accuracy_score(y_test, y_pred)
+        }
+
+results = st.session_state.results
+
+st.title("Huấn luyện mô hình")
+mol=st.selectbox("Chọn mô hình huấn luyện: ", models.keys())
+
+
+# Hiển thị độ chính xác
+st.write(f"**Độ chính xác (Accuracy)**: {results[mol]['accuracy']:.3f}")
+
+report_dict = classification_report(y_test, results[mol]['y_pred'], output_dict=True)
+report_df = pd.DataFrame(report_dict).transpose()
+st.dataframe(report_df)
 
 # Vẽ ma trận nhầm lẫn
+cm = confusion_matrix(y_test, results[mol]['y_pred'])
 fig, ax = plt.subplots()
-cm = confusion_matrix(y_test, y_pred)
-sns.heatmap(cm, annot=True, cmap="Blues")
-ax.set_title("Ma trận nhầm lẫn (Confusion Matrix)")
+sns.heatmap(cm, annot=True, cmap="Blues", fmt="d", ax=ax)
+ax.set_title(f"Ma trận nhầm lẫn: {mol}")
 ax.set_xlabel("Dự đoán")
 ax.set_ylabel("Thực tế")
 st.pyplot(fig)
