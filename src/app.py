@@ -40,7 +40,7 @@ X_test = test[features]
 y_test = test[label]
 
 # Hiển thị bảng
-st.dataframe(train.head())
+st.dataframe(train)
 
 st.title("Phân tích dữ liệu Iris")
 # Chọn biến X và Y
@@ -69,7 +69,7 @@ elif x_var == "All" and y_var != "All":
     st.pyplot(fig)
 
 elif y_var == "All" and x_var != "All":
-    st.subheader(f"So sánh '{x_var}' với tất Y")
+    st.subheader(f"So sánh '{x_var}' với tất cả Y")
     fig, axes = plt.subplots(1, len_cols, figsize=(15, 4))
     index_ax=0
     for i, col in enumerate(features):
